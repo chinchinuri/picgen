@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSSCIP Image Tool</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ПІДКЛЮЧЕННЯ ШРИФТІВ */
+        @font-face {
+            font-family: 'e-Ukraine';
+            src: url('fonts/e-Ukraine-Regular.otf') format('opentype'),
+                 url('fonts/e-Ukraine-Regular.ttf') format('truetype'),
+                 url('fonts/e-Ukraine-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'e-Ukraine-Head';
+            src: url('fonts/e-Ukraine-Head-Bold.otf') format('opentype'),
+                 url('fonts/e-Ukraine-Head-Bold.ttf') format('truetype'),
+                 url('fonts/e-Ukraine-Head-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        :root {
+            --primary-color: #005BBB;
+            --bg-color: #f0f2f5;
+            --panel-width: 400px;
+        }
+
+        body {
+            font-family: 'e-Ukraine', 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--panel-width);
+            background: white;
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        h2 { 
+            margin-top: 0; 
+            margin-bottom: 5px;
+            font-size: 18px; 
+            font-family: 'e-Ukraine-Head', 'Montserrat', sans-serif; 
+            color: #333; 
+            border-bottom: 2px solid var(--primary-color); 
+            padding-bottom: 10px; 
+        }
+        
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            margin-top: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        /* Щоб перший заголовок не мав відступу зверху */
+        .section-title:first-of-type { margin-top: 0; }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .bg-controls {
+            background-color: #eef6ff;
+            border: 1px solid #cce4ff;
+        }
+
+        .hidden { display: none !important; }
+
+        label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input[type="text"], textarea, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 13px;
+        }
+
+        input[type="file"] { font-size: 12px; }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: auto;
+            font-family: 'e-Ukraine-Head', 'Montserrat', sans-serif;
+        }
+        button:hover { background-color: #004494; }
+
+        /* PREVIEW AREA */
+        .preview-area {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #222;
+            padding: 40px;
+            background-image: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+            background-size: 20px 20px;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            background: #fff;
+        }
+
+        .range-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+        input[type="range"] { flex-grow: 1; cursor: pointer; }
+        .reset-link { font-size: 9px; color: var(--primary-color); cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>SSSCIP Image Tool</h2>
+
+        <!-- 1. ВИБІР РЕЖИМУ -->
+        <div class="control-group">
+            <label>Режим роботи</label>
+            <select id="templateType">
+                <option value="social">Facebook / Telegram (Квадрат)</option>
+                <option value="web">Сайт (Плашка по центру)</option>
+            </select>
+        </div>
+
+        <!-- 2. ФОН (ЗАГАЛЬНЕ) -->
+        <div class="section-title">Фон</div>
+        <div class="control-group">
+            <label>Завантажити фото</label>
+            <input type="file" id="bgInput" accept="image/*">
+        </div>
+
+        <div class="control-group bg-controls">
+            <label>Налаштування фону <span class="reset-link" id="resetBgParams">Скинути</span></label>
+            
+            <div class="range-wrap">
+                <span style="font-size:10px; width:30px;">Zoom</span>
+                <input type="range" id="bgScale" min="100" max="250" value="100">
+            </div>
+            <div class="range-wrap">
+                <span style="font-size:10px; width:30px;">↔ X</span>
+                <input type="range" id="bgX" min="-800" max="800" value="0">
+            </div>
+            <div class="range-wrap">
+                <span style="font-size:10px; width:30px;">↕ Y</span>
+                <input type="range" id="bgY" min="-800" max="800" value="0">
+            </div>
+        </div>
+
+        <!-- 3. ЕЛЕМЕНТИ (ЗАЛЕЖАТЬ ВІД РЕЖИМУ) -->
+        
+        <!-- A. СОЦМЕРЕЖІ -->
+        <div id="socialControls">
+            <div class="section-title">Елементи соцмереж</div>
+            
+            <div class="control-group">
+                <label>Логотип (Герб)</label>
+                <input type="file" id="logoInput" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label>Заголовок</label>
+                <textarea id="mainText" rows="3">ЗАТВЕРДЖЕНО ВИМОГИ ДО ЗАХИСТУ ІНФОРМАЦІЇ</textarea>
+            </div>
+
+            <div class="control-group">
+                <label>Підпис</label>
+                <textarea id="subText" rows="2">Державна служба спеціального зв’язку та захисту інформації України</textarea>
+            </div>
+            
+            <div class="control-group">
+                <label>Розмір шрифту</label>
+                <div class="range-wrap">
+                    <input type="range" id="fontSizeTitle" min="20" max="120" value="60">
+                </div>
+            </div>
+
+             <div class="control-group">
+                <label>Розмір логотипа</label>
+                <div class="range-wrap">
+                    <input type="range" id="logoScale" min="50" max="400" value="150">
+                </div>
+            </div>
+        </div>
+
+        <!-- B. САЙТ -->
+        <div id="webControls" class="hidden">
+            <div class="section-title">Елементи сайту</div>
+            
+            <div class="control-group">
+                <label>Нижня плашка (PNG)</label>
+                <input type="file" id="footerInput" accept="image/*">
+                <small style="color: #666; font-size: 10px; margin-top:2px;">Файл з готовим текстом</small>
+            </div>
+            
+            <div class="control-group">
+                <label>Ширина плашки (%)</label>
+                <div class="range-wrap">
+                    <input type="range" id="footerScale" min="30" max="100" value="90">
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. ЕФЕКТИ (ЗАГАЛЬНЕ) -->
+        <div class="section-title">Ефекти</div>
+        <div class="control-group">
+            <label>Прозорість тіні знизу</label>
+            <div class="range-wrap">
+                <input type="range" id="overlayOpacity" min="0" max="1" step="0.1" value="0.7">
+            </div>
+        </div>
+
+        <button id="downloadBtn">⬇ Зберегти зображення</button>
+    </div>
+
+    <div class="preview-area">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- DOM Elements Reference ---
+        const templateType = document.getElementById('templateType');
+        
+        // Background
+        const bgInput = document.getElementById('bgInput');
+        const bgScaleInput = document.getElementById('bgScale');
+        const bgXInput = document.getElementById('bgX');
+        const bgYInput = document.getElementById('bgY');
+        const resetBgParams = document.getElementById('resetBgParams');
+        
+        // Effect
+        const overlayOpacity = document.getElementById('overlayOpacity');
+
+        // Layout Containers
+        const socialControls = document.getElementById('socialControls');
+        const webControls = document.getElementById('webControls');
+
+        // Social Inputs
+        const logoInput = document.getElementById('logoInput');
+        const mainTextInput = document.getElementById('mainText');
+        const subTextInput = document.getElementById('subText');
+        const fontSizeTitle = document.getElementById('fontSizeTitle');
+        const logoScale = document.getElementById('logoScale');
+
+        // Web Inputs
+        const footerInput = document.getElementById('footerInput');
+        const footerScale = document.getElementById('footerScale');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // --- Data State ---
+        let bgImage = new Image();
+        let logoImage = new Image();
+        let footerImage = new Image();
+        
+        let bgLoaded = false;
+        let logoLoaded = false;
+        let footerLoaded = false;
+
+        // Fonts Config
+        const FONT_HEAD = "'e-Ukraine-Head', 'Montserrat', sans-serif";
+        const FONT_BODY = "'e-Ukraine', 'Montserrat', sans-serif";
+
+        // --- Start ---
+        // Wait for fonts, then draw first time
+        document.fonts.ready.then(function () {
+            resizeAndDraw();
+        });
+        
+        // Initial setup for UI
+        handleTemplateChange(); 
+
+        // --- Event Listeners ---
+        
+        // 1. Універсальний слухач для всіх полів вводу (гарантує, що все працює)
+        const allInputs = document.querySelectorAll('input, select, textarea');
+        allInputs.forEach(input => {
+            input.addEventListener('input', draw);
+            input.addEventListener('change', draw);
+        });
+
+        // 2. Специфічний слухач для зміни режиму (щоб переключити інтерфейс)
+        templateType.addEventListener('change', handleTemplateChange);
+
+        // 3. Завантаження картинок
+        bgInput.addEventListener('change', (e) => {
+            loadImg(e, (img) => {
+                bgImage = img;
+                bgLoaded = true;
+                resetBackgroundSettings(); // Скидаємо зум при новому фото
+                draw();
+            });
+        });
+
+        logoInput.addEventListener('change', (e) => {
+            loadImg(e, (img) => { logoImage = img; logoLoaded = true; draw(); });
+        });
+
+        footerInput.addEventListener('change', (e) => {
+            loadImg(e, (img) => { footerImage = img; footerLoaded = true; draw(); });
+        });
+
+        // 4. Кнопка "Скинути"
+        resetBgParams.addEventListener('click', () => {
+            resetBackgroundSettings();
+            draw();
+        });
+
+        // 5. Завантаження
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `SSSCIP_${templateType.value}_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // --- Functions ---
+
+        function handleTemplateChange() {
+            const type = templateType.value;
+            if (type === 'web') {
+                socialControls.classList.add('hidden');
+                webControls.classList.remove('hidden');
+            } else {
+                webControls.classList.add('hidden');
+                socialControls.classList.remove('hidden');
+            }
+            resizeAndDraw();
+        }
+
+        function resizeAndDraw() {
+             if (templateType.value === 'web') {
+                canvas.width = 1600;
+                canvas.height = 1200;
+            } else {
+                canvas.width = 1080;
+                canvas.height = 1080;
+            }
+            draw();
+        }
+
+        function resetBackgroundSettings() {
+            bgScaleInput.value = 100;
+            bgXInput.value = 0;
+            bgYInput.value = 0;
+        }
+
+        function loadImg(e, callback) {
+            const file = e.target.files[0];
+            if(file){
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => callback(img);
+                    img.src = ev.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function draw() {
+            // Очистка
+            ctx.fillStyle = "#1e2a38";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Малюємо фон
+            if (bgLoaded && bgImage.width > 0) {
+                drawBackgroundLayer();
+            } else {
+                ctx.fillStyle = "#fff";
+                ctx.textAlign = "center";
+                ctx.font = `30px ${FONT_BODY}`;
+                ctx.fillText("Завантажте фото", canvas.width/2, canvas.height/2);
+            }
+
+            // 2. Малюємо тінь
+            const gradient = ctx.createLinearGradient(0, canvas.height / 2, 0, canvas.height);
+            const opacity = parseFloat(overlayOpacity.value);
+            gradient.addColorStop(0, `rgba(0,0,0,0)`);
+            gradient.addColorStop(1, `rgba(0,0,0,${opacity})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 3. Малюємо контент
+            if (templateType.value === 'social') {
+                drawSocialElements();
+            } else {
+                drawWebElements();
+            }
+        }
+
+        function drawBackgroundLayer() {
+            const img = bgImage;
+            const cw = canvas.width;
+            const ch = canvas.height;
+
+            // Розрахунок "Cover" (щоб фото заповнило весь екран)
+            const ratioCanvas = cw / ch;
+            const ratioImg = img.width / img.height;
+            let baseScale;
+
+            if (ratioImg > ratioCanvas) {
+                baseScale = ch / img.height;
+            } else {
+                baseScale = cw / img.width;
+            }
+
+            // Додаємо користувацький Zoom
+            const userZoom = parseInt(bgScaleInput.value) / 100;
+            const finalScale = baseScale * userZoom;
+
+            const finalW = img.width * finalScale;
+            const finalH = img.height * finalScale;
+
+            // Додаємо зсув X/Y
+            const userX = parseInt(bgXInput.value);
+            const userY = parseInt(bgYInput.value);
+
+            // Центруємо + Зсуваємо
+            const posX = (cw - finalW) / 2 + userX;
+            const posY = (ch - finalH) / 2 + userY;
+
+            ctx.drawImage(img, posX, posY, finalW, finalH);
+        }
+
+        function drawSocialElements() {
+            const margin = 80;
+            const bottomPadding = 100;
+            let currentY = canvas.height - bottomPadding;
+
+            // Логотип справа зверху
+            if (logoLoaded) {
+                const s = parseInt(logoScale.value);
+                const r = logoImage.height / logoImage.width;
+                ctx.drawImage(logoImage, canvas.width - s - 60, 60, s, s*r);
+            }
+
+            // Тексти
+            ctx.textAlign = "left";
+            
+            // Підпис
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            const subSize = 32;
+            ctx.font = `400 ${subSize}px ${FONT_BODY}`;
+            const subLines = getLines(ctx, subTextInput.value, canvas.width - (margin * 2));
+            [...subLines].reverse().forEach(line => {
+                ctx.fillText(line, margin, currentY);
+                currentY -= (subSize * 1.5);
+            });
+
+            currentY -= 20;
+
+            // Заголовок
+            ctx.fillStyle = "#FFFFFF";
+            const titleSize = parseInt(fontSizeTitle.value);
+            ctx.font = `700 ${titleSize}px ${FONT_HEAD}`;
+            const titleLines = getLines(ctx, mainTextInput.value.toUpperCase(), canvas.width - (margin * 2));
+            [...titleLines].reverse().forEach(line => {
+                ctx.fillText(line, margin, currentY);
+                currentY -= (titleSize * 1.25);
+            });
+        }
+
+        function drawWebElements() {
+            // САЙТ: Тільки плашка внизу по центру
+            if (footerLoaded) {
+                const scalePercent = parseInt(footerScale.value) / 100;
+                
+                // Максимальна ширина (з відступами)
+                const maxW = canvas.width - 100; 
+                
+                // Цільовий розмір
+                let targetW = maxW * scalePercent;
+                const ratio = footerImage.height / footerImage.width;
+                let targetH = targetW * ratio;
+
+                // Центр
+                const x = (canvas.width - targetW) / 2;
+                
+                // Відступ від низу
+                const marginBottom = 80;
+                const y = canvas.height - targetH - marginBottom;
+
+                ctx.drawImage(footerImage, x, y, targetW, targetH);
+            } else {
+                // Підказка
+                ctx.fillStyle = "rgba(255,255,255,0.5)";
+                ctx.font = `20px ${FONT_BODY}`;
+                ctx.textAlign = "center";
+                ctx.fillText("Завантажте нижню плашку (png)", canvas.width/2, canvas.height - 100);
+            }
+        }
+
+        function getLines(ctx, text, maxWidth) {
+            var words = text.split(" ");
+            var lines = [];
+            var currentLine = words[0];
+            for (var i = 1; i < words.length; i++) {
+                var word = words[i];
+                var width = ctx.measureText(currentLine + " " + word).width;
+                if (width < maxWidth) { currentLine += " " + word; } 
+                else { lines.push(currentLine); currentLine = word; }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+    </script>
+</body>
+</html>
